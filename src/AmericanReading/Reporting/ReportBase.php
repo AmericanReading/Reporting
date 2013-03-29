@@ -50,22 +50,29 @@ abstract class ReportBase
     // ------------------------------------------------------------------------
 
     /**
-     * Build a new report, optionally providing the data and columns arrays.
+     * Build a new report, optionally providing a configuration as JSON or
+     * as an object. The configuration may contain the members columns and data
      *
-     * @param array|null $data
-     * @param array|null $columns
+     * @param mixed $reportConfiguration
      */
-    public function __construct($data = null, $columns = null)
+    public function __construct($reportConfiguration = null)
     {
-        // Set columns first. Calling setData() will cause the instance to
-        // determine the columns from the data if columns is not set.
-
-        if (!is_null($columns)) {
-            $this->setColumns($columns);
+        if (is_string($reportConfiguration)) {
+            $reportConfiguration = json_decode($reportConfiguration);
         }
 
-        if (!is_null($data)) {
-            $this->setData($data);
+        if (!is_object($reportConfiguration)) {
+            return;
+        }
+
+        // Set columns first. Calling setData() will cause the instance to
+        // determine the columns from the data if columns is not set.
+        if (isset($reportConfiguration->columns)) {
+            $this->setColumns($reportConfiguration->columns);
+        }
+
+        if (isset($reportConfiguration->data)) {
+            $this->setData($reportConfiguration->data);
         }
     }
 

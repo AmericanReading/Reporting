@@ -6,13 +6,11 @@ class HtmlReport extends ReportBase
 {
     public function html()
     {
-        $html = '';
-
         if (!isset($this->data)) {
             return '';
         }
 
-        $html .= '<table>';
+        $html = '<table>';
 
         if (isset($this->title)) {
             $html .= '<caption>' . $this->title .'</caption>';
@@ -20,20 +18,16 @@ class HtmlReport extends ReportBase
 
         $html .= '<thead>';
         $html .= '<tr>';
-
         foreach ($this->columns as $column) {
             $html .= $this->htmlHeading($column);
         }
-
         $html .= '</tr>';
         $html .= '</thead>';
 
         $html .= '<tbody>';
-
         foreach ($this->data as $row) {
             $html .= $this->htmlRow($row);
         }
-
         $html .= '</tbody>';
 
         $html .= '</table>';
