@@ -30,6 +30,13 @@ abstract class ReportBase
      */
     protected $data;
 
+    /**
+     * Descriptive name for the report.
+     *
+     * @var string
+     */
+    public $title;
+
     // TODO Remove after testing.
     public function dump()
     {

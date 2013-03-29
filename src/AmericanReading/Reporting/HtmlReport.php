@@ -12,9 +12,11 @@ class HtmlReport extends ReportBase
             return '';
         }
 
-        $this->dump();
-
         $html .= '<table>';
+
+        if (isset($this->title)) {
+            $html .= '<caption>' . $this->title .'</caption>';
+        }
 
         $html .= '<thead>';
         $html .= '<tr>';
