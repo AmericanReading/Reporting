@@ -17,12 +17,6 @@ abstract class ReportBase
     protected $columns;
 
     /**
-     * Assoiative array with column keys as keys and column indexes as values.
-     * @var array
-     */
-    protected $columnsIndex;
-
-    /**
      * Array of associative arrays representing the data for the spreadsheet.
      * Each array item represents one row. Keys in row arrays represent columns.
      *
@@ -42,7 +36,6 @@ abstract class ReportBase
     {
         print '<pre>';
         var_dump($this->columns);
-        var_dump($this->columnsIndex);
         var_dump($this->data);
         print '</pre>';
     }
@@ -59,6 +52,17 @@ abstract class ReportBase
     {
         if (is_string($reportConfiguration)) {
             $reportConfiguration = json_decode($reportConfiguration);
+        }
+
+        if (is_array($reportConfiguration)) {
+            if (self::isAssoc($reportConfiguration)) {
+                // Cast associative arrays as objects.
+                $reportConfiguration = (object) $reportConfiguration;
+            } else {
+                // Assume a numeric array is the data array.
+                $this->setData($reportConfiguration);
+                return;
+            }
         }
 
         if (!is_object($reportConfiguration)) {
@@ -137,8 +141,8 @@ abstract class ReportBase
     }
 
     /**
-     * Sort the members of the columns array by index and build the
-     * columnsIndex member.
+     * Sort the members of the columns array by index and reset the indexes
+     * to start from zero and count up.
      */
     protected function sortColumns()
     {
@@ -152,17 +156,13 @@ abstract class ReportBase
             }
         );
 
-        $columnsIndex = array();
-
         array_walk(
             $this->columns,
             function ($column, $index) use (&$columnsIndex) {
                 $column->index = $index;
-                $columnsIndex[$column->key] = $index;
             }
         );
 
-        $this->columnsIndex = $columnsIndex;
     }
 
     /**
@@ -170,21 +170,11 @@ abstract class ReportBase
      */
     protected function restructureColumns()
     {
-        // Numeric array
-        if (!self::isAssoc($this->columns)) {
-
-            $index = 0;
-            foreach ($this->columns as &$column) {
-                $this->retructureColumn($column, $index);
-                $index++;
-            }
-
-        } else {
-
-            // TODO Associative array and objects as columns
-
+        $index = 0;
+        foreach ($this->columns as &$column) {
+            $this->retructureColumn($column, $index);
+            $index++;
         }
-
     }
 
     /**
@@ -199,20 +189,20 @@ abstract class ReportBase
     {
         // Convert the column variable to a StdClass object, if needed.
 
-        if (is_string($column)) {
+        if (is_array($column) && self::isAssoc($column)) {
 
-            // If the item is a string, build an object using this string
-            // as both the key and the heading.
+            // Cast associatve array to StdClass object.
+            $column = (object) $column;
+
+        } elseif (is_string($column)) {
+
+            // If the item is a string build an object using this as both the
+            // key and the heading.
             $column = (object) array(
                 'index' => $index,
                 'key' => $column,
                 'heading' => $column
             );
-
-        } elseif (is_array($column) && self::isAssoc($column)) {
-
-            // Cast associatve array to StdClass object.
-            $column = (object) $column;
 
         }
 
@@ -294,18 +284,14 @@ abstract class ReportBase
      */
     protected function restructureDataCell(&$cell)
     {
-       if (is_string($cell)) {
-
-           $cell = (object) array(
-               'value' => $cell
-           );
-
-       } elseif (is_array($cell) && self::isAssoc($cell)) {
-
-           // Cast associatve array to StdClass object.
-           $cell = (object) $cell;
-
-       }
+        if (is_array($cell) && self::isAssoc($cell)) {
+            // Cast associatve array to StdClass object.
+            $cell = (object) $cell;
+        } elseif (!is_object($cell)) {
+            $cell = (object) array(
+                'value' => $cell
+            );
+        }
 
         // Ensure the variable is a proper StdClass object with the required
         // properties: index, key, and heading.

@@ -4,13 +4,19 @@ namespace AmericanReading\Reporting;
 
 class HtmlReport extends ReportBase
 {
+    public $tableClass;
+
     public function html()
     {
         if (!isset($this->data)) {
             return '';
         }
 
-        $html = '<table>';
+        $html = '<table';
+        if (isset($this->tableClass)) {
+            $html .= ' class="' . $this->tableClass .'"';
+        }
+        $html .= '>';
 
         if (isset($this->title)) {
             $html .= '<caption>' . $this->title .'</caption>';
@@ -68,9 +74,13 @@ class HtmlReport extends ReportBase
 
         foreach ($this->columns as $column) {
 
-            $cellData = $rowData->{$column->key};
+            if (isset($rowData->{$column->key})) {
+                $cellData = $rowData->{$column->key};
+                $html .= $this->htmlCell($column, $cellData);
+            } else {
+                $html .= $this->htmlCell($column);
+            }
 
-            $html .= $this->htmlCell($column, $cellData);
         }
 
         $html .= '</tr>';
@@ -78,8 +88,14 @@ class HtmlReport extends ReportBase
         return $html;
     }
 
-    protected function htmlCell($column, $data)
+    protected function htmlCell($column, $data = null)
     {
+        if (is_null($data)) {
+            $data = (object) array(
+                'value' => ''
+            );
+        }
+
         $cssClass = 'column-' . $column->index;
         if (isset($column->class)) {
             $cssClass .= ' ' . $column->class;
