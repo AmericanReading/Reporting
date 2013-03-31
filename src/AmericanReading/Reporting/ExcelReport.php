@@ -2,21 +2,44 @@
 
 namespace AmericanReading\Reporting;
 
+use \Exception;
 use \PHPExcel;
 use \PHPExcel_IOFactory;
 
 class ExcelReport extends ReportBase
 {
+    /**
+     * Prefix used for the temp file
+     *
+     * @var string
+     */
     public $filenamePrefix = 'xlsreport';
+
+    /**
+     * Filename provided in the headers to indicate a name on download.
+     * 
+     * @var string
+     */
     public $filename = 'report.xlsx';
 
+    /**
+     * Generate the report as an Excel document.
+     *
+     * This menthod can output the headers and document. Or, if you pass true
+     * for $returnAsString, the method will outpt anything, but will return
+     * the document as a string.
+     *
+     * @param bool $returnAsString
+     * @return string
+     * @throws \Exception
+     */
     public function report($returnAsString = false)
     {
         // Get a temporary file to write to.
         $tmp = tempnam(sys_get_temp_dir(), $this->filenamePrefix);
 
         if ($tmp === false) {
-            throw new \Exception('Cannot generate report. Unable to write to temp file: ' . $tmp);
+            throw new Exception('Cannot generate report. Unable to write to temp file: ' . $tmp);
         }
 
         $xls = $this->phpExcelReport();
@@ -44,7 +67,7 @@ class ExcelReport extends ReportBase
     }
 
     /**
-     * Build the report as PHPExcel instance.
+     * Build the report as a PHPExcel instance.
      *
      * @return PHPExcel
      */
@@ -116,6 +139,7 @@ class ExcelReport extends ReportBase
         }
 
     }
+
     /**
      * Write one row of data from the passed array the worksheet.
      *
@@ -135,6 +159,5 @@ class ExcelReport extends ReportBase
         }
 
     }
-
 
 }

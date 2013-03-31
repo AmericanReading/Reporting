@@ -230,6 +230,14 @@ abstract class ReportBase
                 $column->key = $column->heading;
             }
 
+            if (isset($column->format)) {
+                if (!is_object($column->format)) {
+                    $column->format = (object) array(
+                        'type' => $column->format
+                    );
+                }
+            }
+
         } else {
             throw new Exception('Unexpected value in columns array');
         }
