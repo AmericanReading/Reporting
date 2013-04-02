@@ -25,6 +25,24 @@ abstract class ReportBase
     protected $data;
 
     /**
+     * Object of options from the reportConfiguration
+     *
+     * @var object
+     */
+    protected $options;
+
+    /**
+     * Comparison function for sorting the data. The two parameters will be
+     * StdClass objects representing rows of the data.
+     *
+     * See the static helper method makeSortFunction for assistance on building
+     * functions using the columns keys.
+     *
+     * @var array
+     */
+    protected $sortFunction;
+
+    /**
      * Descriptive name for the report.
      *
      * @var string
@@ -50,10 +68,12 @@ abstract class ReportBase
      */
     public function __construct($reportConfiguration = null)
     {
+        // String: try to decode as JSON.
         if (is_string($reportConfiguration)) {
             $reportConfiguration = json_decode($reportConfiguration);
         }
 
+        // Array: use as data array or case as StdClass.
         if (is_array($reportConfiguration)) {
             if (self::isAssoc($reportConfiguration)) {
                 // Cast associative arrays as objects.
@@ -69,18 +89,37 @@ abstract class ReportBase
             return;
         }
 
-        // Set columns first. Calling setData() will cause the instance to
-        // determine the columns from the data if columns is not set.
+        // Columns
         if (isset($reportConfiguration->columns)) {
             $this->setColumns($reportConfiguration->columns);
         }
 
+        // Options
+        if (isset($reportConfiguration->options)) {
+            $this->setOptions($reportConfiguration->options);
+        }
+
+        // Data. Set the data last. Calling setData() will cause the instance
+        // to determine the columns from the data if columns is not set.
         if (isset($reportConfiguration->data)) {
             $this->setData($reportConfiguration->data);
         }
+
     }
 
     // ------------------------------------------------------------------------
+
+    /**
+     * Provide a new array describing the columns.
+     *
+     * @param array $columns
+     */
+    public function setColumns($columns)
+    {
+        $this->columns = $columns;
+        $this->restructureColumns();
+        $this->sortColumns();
+    }
 
     /**
      * Provide a new data array. If the columns member is not already set,
@@ -97,18 +136,34 @@ abstract class ReportBase
         }
 
         $this->restructureData();
+        $this->sortData();
     }
 
     /**
-     * Provide a new array describing the columns.
+     * Convert the options member to the specific
      *
-     * @param array $columns
+     *
      */
-    public function setColumns($columns)
+    public function setOptions($options)
     {
-        $this->columns = $columns;
-        $this->restructureColumns();
-        $this->sortColumns();
+        // Associative array: cast as StdClass.
+        if (is_array($options) && self::isAssoc($options)) {
+            $options = (object) $options;
+        }
+
+        if (!is_object($options)) {
+            throw new Exception('Options must be an object or associative array.');
+        }
+
+        // Store the new options member.
+        $this->options = $options;
+
+        if (isset($options->title)) {
+            $this->title = $options->title;
+        }
+
+        // Call methods that require options to be set.
+        $this->buildSortFunction();
     }
 
     // ------------------------------------------------------------------------
@@ -244,6 +299,8 @@ abstract class ReportBase
 
     }
 
+    // ------------------------------------------------------------------------
+
     /**
      * Replace the current columns member with an array of objects.
      */
@@ -302,7 +359,7 @@ abstract class ReportBase
         }
 
         // Ensure the variable is a proper StdClass object with the required
-        // properties: index, key, and heading.
+        // property value.
 
         if (is_object($cell)) {
             if (!isset($cell->value)) {
@@ -313,6 +370,176 @@ abstract class ReportBase
         }
 
     }
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * Parse the options and construct a sort function
+     *
+     * @throws Exception
+     */
+    protected function buildSortFunction()
+    {
+        if (isset($this->options) && isset($this->options->sort)) {
+            $sortOptions = $this->options->sort;
+        } else {
+            return;
+        }
+
+        $sortFns = array();
+
+        foreach ($sortOptions as $sortOption) {
+
+            $reverse = false;
+
+            if (is_string($sortOption)) {
+
+                // Use the string as the column key.
+                $columnKey = $sortOption;
+
+                if ($columnKey[0] === '!') {
+                    $reverse = true;
+                    $columnKey = substr($columnKey, 1);
+                }
+
+            } else if (is_object($sortOption)) {
+
+                // Object
+                if (!isset($sortOption->column)) {
+                    throw new Exception('Sort object must contain a column member');
+                }
+                $columnKey = $sortOption->column;
+
+                if (isset($sortOption->reverse)) {
+                    $reverse = $sortOption->reverse;
+                }
+
+            } else {
+                // Fail if not a string or object.
+                throw new Exception('Unexpected item in options.sort');
+            }
+
+            // Append a new sort function.
+            $sortFns[] = self::makeSortFunction($columnKey, $reverse);
+
+        }
+
+        // Chain the array of callbacks together into one.
+        $this->sortFunction = self::makeComplexSortFunction($sortFns);
+
+    }
+
+    /**
+     * Sort the data row using the sortFunction member.
+     *
+     * This is called automatically on setData(), so you really only need to
+     * call it explicitly if you set the sortFunction member after setting
+     * the data.
+     */
+    protected function sortData()
+    {
+        if (is_callable($this->sortFunction)) {
+            usort($this->data, $this->sortFunction);
+        }
+    }
+
+    /**
+     * Create and return a comparison function the compares the sortValue or
+     * value members of the given column for two rows.
+     *
+     * If a comparison function is passed as $nextFunction, the new function
+     * use that in the event of an equal comparion.
+     *
+     * @param string $columnKey
+     * @param bool $reverse
+     * @return callable
+     */
+    public static function makeSortFunction($columnKey, $reverse = false)
+    {
+        $order = $reverse ? -1 : 1;
+
+        $fn = function ($a, $b) use ($columnKey, $order) {
+
+            // Prefer the optional sortValue or value for sorting.
+            if (isset($a->{$columnKey}->sortValue)) {
+                $aVal = $a->{$columnKey}->sortValue;
+            } else {
+                $aVal = $a->{$columnKey}->value;
+            }
+
+            if (isset($b->{$columnKey}->sortValue)) {
+                $bVal = $b->{$columnKey}->sortValue;
+            } else {
+                $bVal = $b->{$columnKey}->value;
+            }
+
+            if ($aVal == $bVal) {
+                return 0;
+            }
+
+            return $order * ($aVal > $bVal ? 1 : -1);
+
+        };
+
+        return $fn;
+
+    }
+
+    /**
+     * Given an ordered array of comparison function, return one function that
+     * starts with the first and uses the subsequent functions in order in the
+     * event of equal items.
+     *
+     * @param $sortFnArr
+     * @param int $index
+     * @return callable
+     * @throws \Exception
+     */
+    public static function makeComplexSortFunction($sortFnArr, $index = 0)
+    {
+        if (isset($sortFnArr[$index])) {
+            $fn1 = $sortFnArr[$index];
+        } else {
+            throw new Exception('First argument must be an array conatining at least one callable');
+        }
+
+        $fn2 = null;
+        if (isset($sortFnArr[$index + 1])) {
+            $fn2 = self::makeComplexSortFunction($sortFnArr, $index + 1);
+        }
+
+        return self::makeChainedSortFunction($fn1, $fn2);
+    }
+
+    /**
+     * Given two comparison functions, return a comparison function that uses
+     * the first unless it evaluates as equal, then uses the second.
+     *
+     * @param $fn1
+     * @param $fn2
+     * @return callable
+     */
+    public static function makeChainedSortFunction($fn1, $fn2)
+    {
+        if (!is_callable($fn2)) {
+            return $fn1;
+        }
+
+        return function ($a, $b) use ($fn1, $fn2) {
+
+            $comp = $fn1($a, $b);
+
+            if ($comp !== 0) {
+                return $comp;
+            }
+
+            return $fn2($a, $b);
+
+        };
+
+    }
+
+    // ------------------------------------------------------------------------
 
     /**
      * Return if an array is associative.
