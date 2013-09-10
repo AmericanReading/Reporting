@@ -39,18 +39,7 @@ class ExcelReport extends ReportBase
      */
     public function report($returnAsString = false)
     {
-        // Get a temporary file to write to.
-        $tmp = tempnam(sys_get_temp_dir(), $this->filenamePrefix);
-
-        if ($tmp === false) {
-            throw new Exception('Cannot generate report. Unable to write to temp file: ' . $tmp);
-        }
-
-        $xls = $this->phpExcelReport();
-
-        // Create the writer and save the file.
-        $objWriter = PHPExcel_IOFactory::createWriter($xls, 'Excel2007');
-        $objWriter->save($tmp);
+        $tmp = $this->writeToTempFile();
 
         // Read the contents of the file to a string.
         $xlsstr = file_get_contents($tmp);
@@ -68,6 +57,29 @@ class ExcelReport extends ReportBase
         header('Content-Disposition: attachment; filename=' . $this->filename);
         print $xlsstr;
         exit;
+    }
+
+    /**
+     * Write the report to a temp file and return the path.
+     *
+     * @return string Path to the newly created temp file.
+     * @throws \Exception
+     */
+    public function writeToTempFile()
+    {
+        // Get a temporary file to write to.
+        $tmp = tempnam(sys_get_temp_dir(), $this->filenamePrefix);
+        if ($tmp === false) {
+            throw new Exception('Cannot generate report. Unable to write to temp file: ' . $tmp);
+        }
+
+        $xls = $this->phpExcelReport();
+
+        // Create the writer and save the file.
+        $objWriter = PHPExcel_IOFactory::createWriter($xls, 'Excel2007');
+        $objWriter->save($tmp);
+
+        return $tmp;
     }
 
     /**
