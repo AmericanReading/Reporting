@@ -41,21 +41,14 @@ class ExcelReport extends ReportBase
     {
         $tmp = $this->writeToTempFile();
 
-        // Read the contents of the file to a string.
-        $xlsstr = file_get_contents($tmp);
+        // Output the content-type header and the contents of the file.
+        header("Content-Length: " . filesize($tmp));
+        header('Content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename=' . $this->filename);
+        readfile($tmp);
 
         // Remove the temp file.
         unlink($tmp);
-
-        // Return the stream if the called requested it.
-        if ($returnAsString) {
-            return $xlsstr;
-        }
-
-        // Output the content-type header and the contents of the file.
-        header('Content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename=' . $this->filename);
-        print $xlsstr;
         exit;
     }
 
@@ -229,6 +222,10 @@ class ExcelReport extends ReportBase
 
                     case 'percentage':
                         $sheet->getStyle($range)->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_PERCENTAGE);
+                        break;
+
+                    case 'singleDecimal':
+                        $sheet->getStyle($range)->getNumberFormat()->setFormatCode("0.0");
                         break;
                 }
             }
