@@ -1,0 +1,16 @@
+version: '3.4'
+services:
+  nginx:
+    image: nginx:1.15
+    depends_on:
+      - php
+    ports:
+      - 8000:80
+    volumes:
+      - .:/usr/local/src/arc
+      - ./example/nginx.conf:/etc/nginx/conf.d/default.conf
+  php:
+    build:
+      context: .
+    volumes:
+      - .:/usr/local/src/arc
