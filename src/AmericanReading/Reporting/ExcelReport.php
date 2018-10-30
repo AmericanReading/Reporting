@@ -2,13 +2,12 @@
 
 namespace AmericanReading\Reporting;
 
-use Exception;
-use PHPExcel;
-use PHPExcel_Cell;
-use PHPExcel_IOFactory;
-use PHPExcel_Shared_Date;
-use PHPExcel_Style_NumberFormat;
-use PHPExcel_Worksheet;
+use Couchbase\Exception;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ExcelReport extends ReportBase
 {
@@ -41,6 +40,12 @@ class ExcelReport extends ReportBase
     {
         $tmp = $this->writeToTempFile();
 
+        if ($returnAsString) {
+            $contents = file_get_contents($tmp);
+            unlink($tmp);
+            return $contents;
+        }
+
         // Output the content-type header and the contents of the file.
         header("Content-Length: " . filesize($tmp));
         header('Content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -66,11 +71,11 @@ class ExcelReport extends ReportBase
             throw new Exception('Cannot generate report. Unable to write to temp file: ' . $tmp);
         }
 
-        $xls = $this->phpExcelReport();
+        $spreadsheet = $this->phpExcelReport();
 
         // Create the writer and save the file.
-        $objWriter = PHPExcel_IOFactory::createWriter($xls, 'Excel2007');
-        $objWriter->save($tmp);
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tmp);
 
         return $tmp;
     }
@@ -78,7 +83,8 @@ class ExcelReport extends ReportBase
     /**
      * Build the report as a PHPExcel instance.
      *
-     * @return PHPExcel
+     * @return Spreadsheet
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
     public function phpExcelReport()
     {
@@ -86,12 +92,8 @@ class ExcelReport extends ReportBase
             return null;
         }
 
-        // Create a new instance and active sheet.
-        $phpExcel = new PHPExcel();
-        $phpExcel->setActiveSheetIndex(0);
-
-        // Reference the first sheet.
-        $sheet = $phpExcel->getActiveSheet();
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
 
         // Add the data to the sheet.
         $this->addHeaderRow($sheet);
@@ -99,20 +101,20 @@ class ExcelReport extends ReportBase
 
         $this->formatColumns($sheet);
 
-        return $phpExcel;
-
+        return $spreadsheet;
     }
 
     /**
      * Write the columns names, style them, and setup the split on the passed
      * PHPExcel worksheet instance.
      *
-     * @param \PHPExcel_Worksheet $sheet
+     * @param Worksheet $sheet
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
     protected function addHeaderRow($sheet)
     {
         foreach ($this->columns as $column) {
-            $cell = $sheet->getCellByColumnAndRow($column->index, 1);
+            $cell = $sheet->getCellByColumnAndRow($column->index + 1, 1);
             $cell->setValue($column->heading);
             $col = $cell->getColumn();
             $sheet->getColumnDimension($col)->setAutoSize(true);
@@ -136,7 +138,8 @@ class ExcelReport extends ReportBase
      * Write the columns names, style them, and setup the split on the passed
      * PHPExcel worksheet instance.
      *
-     * @param \PHPExcel_Worksheet $sheet
+     * @param Worksheet $sheet
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
     protected function addDataRows($sheet)
     {
@@ -146,34 +149,33 @@ class ExcelReport extends ReportBase
             $this->addDataRow($sheet, $row, $rowIndex);
             $rowIndex += 1;
         }
-
     }
 
     /**
      * Write one row of data from the passed array the worksheet.
      *
-     * @param PHPExcel_Worksheet $sheet  The worksheet to modify
-     * @param array $row  Associative array representing one row of data
-     * @param int $rowIndex  The 1-based index of the row to write to.
+     * @param Worksheet $sheet The worksheet to modify
+     * @param array $row Associative array representing one row of data
+     * @param int $rowIndex The 1-based index of the row to write to.
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
-    protected function addDataRow($sheet, $row, $rowIndex) {
-
+    protected function addDataRow($sheet, $row, $rowIndex)
+    {
         foreach ($this->columns as $column) {
-
             if (isset($row->{$column->key})) {
-                $cell = $sheet->getCellByColumnAndRow($column->index, $rowIndex);
+                $cell = $sheet->getCellByColumnAndRow(
+                    $column->index + 1, $rowIndex);
                 $data = $row->{$column->key};
                 $this->setDataCellValue($cell, $data, $column);
             }
-
         }
-
     }
 
     /**
-     * @param PHPExcel_Cell $cell
+     * @param Cell $cell
      * @param object $data
      * @param object $column
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
     protected function setDataCellValue($cell, $data, $column) {
 
@@ -183,7 +185,7 @@ class ExcelReport extends ReportBase
 
         // Dates need to be converted to Excel format dates first.
         if (isset($column->format) && $column->format->type === 'date') {
-            $dataValue = PHPExcel_Shared_Date::PHPToExcel(strtotime($data->value));
+            $dataValue = Date::PHPToExcel(strtotime($data->value));
             $cell->setValue($dataValue);
             return;
         }
@@ -192,7 +194,8 @@ class ExcelReport extends ReportBase
     }
 
     /**
-     * @param PHPExcel_Worksheet $sheet
+     * @param Worksheet $sheet
+     * @throws \PhpOffice\PhpSpreadsheet\Exception
      */
     protected function formatColumns($sheet) {
 
@@ -255,5 +258,4 @@ class ExcelReport extends ReportBase
             array_values($lut),
             $phpDateFormat);
     }
-
 }

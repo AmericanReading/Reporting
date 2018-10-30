@@ -48,6 +48,7 @@ class HtmlReport extends ReportBase
      * Create a new Report that produce an HTML representation.
      *
      * @param array|null $reportConfiguration
+     * @throws \Exception
      */
     public function __construct($reportConfiguration = null)
     {
@@ -221,7 +222,5 @@ class HtmlReport extends ReportBase
         }
 
         return $data->value;
-
     }
-
 }

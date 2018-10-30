@@ -49,15 +49,6 @@ abstract class ReportBase
      */
     public $title;
 
-    // TODO Remove after testing.
-    public function dump()
-    {
-        print '<pre>';
-        var_dump($this->columns);
-        var_dump($this->data);
-        print '</pre>';
-    }
-
     // ------------------------------------------------------------------------
 
     /**
@@ -105,7 +96,6 @@ abstract class ReportBase
         if (isset($reportConfiguration->data)) {
             $this->setData($reportConfiguration->data);
         }
-
     }
 
     // ------------------------------------------------------------------------
@@ -214,7 +204,6 @@ abstract class ReportBase
                 $column->index = $index;
             }
         );
-
     }
 
     /**
@@ -240,14 +229,10 @@ abstract class ReportBase
     protected function retructureColumn(&$column, $index)
     {
         // Convert the column variable to a StdClass object, if needed.
-
         if (is_array($column) && self::isAssoc($column)) {
-
             // Cast associatve array to StdClass object.
             $column = (object) $column;
-
         } elseif (is_string($column)) {
-
             // If the item is a string build an object using this as both the
             // key and the heading.
             $column = (object) array(
@@ -255,7 +240,6 @@ abstract class ReportBase
                 'key' => $column,
                 'heading' => $column
             );
-
         }
 
         // Ensure the variable is a proper StdClass object with the required
@@ -365,7 +349,6 @@ abstract class ReportBase
         } else {
             throw new Exception('Unexpected value in data array');
         }
-
     }
 
     // ------------------------------------------------------------------------
@@ -423,7 +406,6 @@ abstract class ReportBase
 
         // Chain the array of callbacks together into one.
         $this->sortFunction = self::makeComplexSortFunction($sortFns);
-
     }
 
     /**
@@ -456,7 +438,6 @@ abstract class ReportBase
         $order = $reverse ? -1 : 1;
 
         $fn = function ($a, $b) use ($columnKey, $order) {
-
             // Prefer the optional sortValue or value for sorting.
             if (isset($a->{$columnKey}->sortValue)) {
                 $aVal = $a->{$columnKey}->sortValue;
@@ -473,13 +454,10 @@ abstract class ReportBase
             if ($aVal == $bVal) {
                 return 0;
             }
-
             return $order * ($aVal > $bVal ? 1 : -1);
-
         };
 
         return $fn;
-
     }
 
     /**
@@ -523,17 +501,12 @@ abstract class ReportBase
         }
 
         return function ($a, $b) use ($fn1, $fn2) {
-
             $comp = $fn1($a, $b);
-
             if ($comp !== 0) {
                 return $comp;
             }
-
             return $fn2($a, $b);
-
         };
-
     }
 
     // ------------------------------------------------------------------------
@@ -548,5 +521,4 @@ abstract class ReportBase
     {
         return array_keys($arr) !== range(0, count($arr) - 1);
     }
-
 }
