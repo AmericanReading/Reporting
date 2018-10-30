@@ -65,6 +65,7 @@ abstract class ReportBase
      * as an object. The configuration may contain the members columns and data
      *
      * @param mixed $reportConfiguration
+     * @throws Exception
      */
     public function __construct($reportConfiguration = null)
     {
@@ -126,6 +127,7 @@ abstract class ReportBase
      * the instance will construct one from the info in data.
      *
      * @param array $data
+     * @throws Exception
      */
     public function setData($data)
     {
@@ -139,11 +141,6 @@ abstract class ReportBase
         $this->sortData();
     }
 
-    /**
-     * Convert the options member to the specific
-     *
-     *
-     */
     public function setOptions($options)
     {
         // Associative array: cast as StdClass.
