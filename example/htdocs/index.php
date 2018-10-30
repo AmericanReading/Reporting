@@ -43,6 +43,7 @@ switch ($_SERVER['REQUEST_URI']) {
         $report = new ExcelReport();
         $report->setColumns($columns);
         $report->setData($data);
+        $report->filename = "Sample Excel Report.xlsx";
         $report->report();
         exit;
         break;

@@ -49,7 +49,7 @@ class ExcelReport extends ReportBase
         // Output the content-type header and the contents of the file.
         header("Content-Length: " . filesize($tmp));
         header('Content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename=' . $this->filename);
+        header('Content-Disposition: attachment; filename="' . $this->filename . '"');
         readfile($tmp);
 
         // Remove the temp file.
